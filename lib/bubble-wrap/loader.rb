@@ -39,6 +39,27 @@ unless defined?(BubbleWrap::LOADER_PRESENT)
         puts "bubble-wrap/#{requirement} requires OS X to use." if requirement
       end
     end
+
+    def before_config(app)
+      app.files = ::BubbleWrap::Requirement.files(app.files)
+      app.files_dependencies ::BubbleWrap::Requirement.files_dependencies
+      app.frameworks = ::BubbleWrap::Requirement.frameworks(app.frameworks)
+    end
+
+    def after_config(config)
+      return unless ::BubbleWrap::Requirement.frameworks.include?("CoreLocation")
+      BubbleWrap.require_ios do
+        ios8_files = 'motion/ios/8/location_constants.rb'
+        if config.send(:deployment_target).to_f >= 8.0
+          ::BubbleWrap.require(ios8_files)
+          before_config(config)
+        else
+          config.files = config.files.reject {|s|
+            s.include?(ios8_files)
+          }
+        end
+      end
+    end
   end
 
   BW = BubbleWrap unless defined?(BW)

@@ -28,10 +28,10 @@ module BubbleWrap
     # RSSItem is a simple class that holds all of RSS items.
     # Extend this class to display/process the item differently.
     class RSSItem
-      attr_accessor :title, :description, :link, :guid, :pubDate, :enclosure
+      attr_accessor :title, :description, :link, :guid, :pubDate, :creator, :category, :encoded, :enclosure
 
       def initialize
-        @title, @description, @link, @pubDate, @guid = '', '', '', '', ''
+        @title, @description, @link, @pubDate, @guid, @creator, @category, @encoded = '', '', '', '', ''
       end
 
       def to_hash
@@ -41,7 +41,9 @@ module BubbleWrap
           :link         => link,
           :pubDate      => pubDate,
           :guid         => guid,
-          :enclosure    => enclosure
+          :enclosure    => enclosure,
+          :category     => category,
+          :encoded      => encoded,
         }
       end
     end
@@ -50,11 +52,12 @@ module BubbleWrap
       if data
         data_to_parse = input.respond_to?(:to_data) ? input.to_data : input
         @source = data_to_parse
+        @source_type = :data
       else
         url = input.is_a?(NSURL) ? input : NSURL.alloc.initWithString(input)
         @source = url
+        @source_type = :url
       end
-      self.state = :initializes
       self
     end
 
@@ -75,12 +78,16 @@ module BubbleWrap
     def parse(&block)
       @block = block
 
-      fetch_source_data do |data|
-        @parser = NSXMLParser.alloc.initWithData(data)
-        @parser.shouldProcessNamespaces = true
-        @parser.delegate ||= self
-        @parser.parse
+      if @source_type == :url
+        @parser = NSXMLParser.alloc.initWithContentsOfURL(@source)
+      else
+        @parser = NSXMLParser.alloc.initWithData(@source)
       end
+
+      @parser.shouldProcessNamespaces = true
+      @parser.delegate ||= self
+      self.state = :initializes
+      @parser.parse
     end
 
     # Delegate getting called when parsing starts
@@ -129,7 +136,7 @@ module BubbleWrap
     # If a block was set, it will be called on each parsed items
     def parserDidEndDocument(parser)
       puts "done parsing" if debug
-      self.state = :is_done
+      self.state = :is_done unless self.state == :errors
     end
 
     def parserError
@@ -140,20 +147,5 @@ module BubbleWrap
     # parser:validationErrorOccurred:
     # parser:foundCDATA:
 
-    protected
-
-    def fetch_source_data(&blk)
-      if @source.is_a?(NSURL)
-        HTTP.get(@source.absoluteString) do |response|
-          if response.ok?
-            blk.call(response.body)
-          else
-            parser(parser, parseErrorOccurred:"HTTP request failed (#{response})")
-          end
-        end
-      else
-        yield @source
-      end
-    end
   end
 end

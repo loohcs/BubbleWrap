@@ -1,12 +1,18 @@
 language: objective-c
+osx_image: xcode7.3
 before_install:
-    - (ruby --version)
-    - sudo chown -R travis ~/Library/RubyMotion
-    - mkdir -p ~/Library/RubyMotion/build
-    - sudo motion update
+  - (ruby --version)
+  - sudo chown -R travis ~/Library/RubyMotion
+  - sudo mkdir -p ~/Library/RubyMotion/build
+  - sudo chown -R travis ~/Library/RubyMotion/build
+  - sudo motion update
+gemfile:
+  - Gemfile
 script:
-    - bundle install
-    - bundle exec rake clean
-    - bundle exec rake spec
-    - bundle exec rake clean
-    - bundle exec rake spec osx=true
+  - bundle install --jobs=3 --retry=3
+  - bundle exec rake clean
+  - bundle exec rake spec
+  - bundle exec rake clean
+  - bundle exec rake spec target=7.1
+  - bundle exec rake clean
+  - bundle exec rake spec osx=true

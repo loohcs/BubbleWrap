@@ -1,10 +1,53 @@
 ## Unreleased
 
-[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.4.0...master)
+[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.9.5...master)
+
+## 1.9.5
+
+[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.9.4...v1.9.5)
+
+* Fixed 'simulator?' so it returns the correct value, when running ios 8 or below on device. ([#481](https://github.com/rubymotion/BubbleWrap/pull/481))
+
+## ~~1.9.3~~ 1.9.4
+
+[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.9.2...v1.9.4)
+
+* Fixed `Device.simulator?` for iOS 9. ([#473](https://github.com/rubymotion/BubbleWrap/pull/473))
+
+## 1.9.2
+
+[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.9.1...v1.9.2)
+
+* Added `DependentDeferrable`. ([#469](https://github.com/rubymotion/BubbleWrap/pull/469))
+
+## 1.9.1
+
+[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.9.0...v1.9.1)
+
+* Fix issue in loading iOS 8 constants for CoreLocation
+
+## 1.9.0
+
+[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.8.0...v1.9.0)
+
+* Add support for `keyboardType` on first input field of `BW::UIAlertView` ([#406](https://github.com/rubymotion/BubbleWrap/pull/406))
+* Implement #+ and #- for NSIndexPath to incr/decr row ([#420](https://github.com/rubymotion/BubbleWrap/pull/420))
+* Extract CoreMotion classes to make it easier to use and more maintainable ([#454](https://github.com/rubymotion/BubbleWrap/pull/454))
+* Motion extract classes ([#454](https://github.com/rubymotion/BubbleWrap/pull/454))
+* Added RSS fields: creator, category, encoded  ([#461](https://github.com/rubymotion/BubbleWrap/pull/461))
+* KVO `observe!` and ability to pass multiple key paths to `observe` ([#460](https://github.com/rubymotion/BubbleWrap/pull/460))
+* `App.short_version` ([#466](https://github.com/rubymotion/BubbleWrap/pull/466))
+* Bump the required version of iOS to >= 7 ([#424](https://github.com/rubymotion/BubbleWrap/pull/424))
+* Bump the required version of iOS to >= 7 ([#424](https://github.com/rubymotion/BubbleWrap/pull/424))
+* Fixes to CoreLocation ([#422](https://github.com/rubymotion/BubbleWrap/pull/422)) & ([#432](https://github.com/rubymotion/BubbleWrap/pull/432))
+* Adds default text option to BW::UIAlertView ([#467](https://github.com/rubymotion/BubbleWrap/pull/467))
+* Bump the minimum required RubyMotion version to `3.12`.
+
+## ... nothing to see here... move along.
 
 ## 1.4.0
 
-[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.3.0...master)
+[Commit history](https://github.com/rubymotion/BubbleWrap/compare/v1.3.0...v1.4.0)
 
 * Added `BW::Mail` for sending emails ([#247](https://github.com/rubymotion/BubbleWrap/pull/247))
 * Added `BW::SMS` for sending SMS/iMessages ([#287](https://github.com/rubymotion/BubbleWrap/pull/287))

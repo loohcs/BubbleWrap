@@ -6,9 +6,7 @@ module BubbleWrap
         base.instance_eval do
           def setup_with_bubblewrap(*args, &block)
             bw_config = proc do |app|
-              app.files = ::BubbleWrap::Requirement.files(app.files)
-              app.files_dependencies ::BubbleWrap::Requirement.files_dependencies
-              app.frameworks = ::BubbleWrap::Requirement.frameworks(app.frameworks)
+              ::BubbleWrap.before_config(app)
               block.call(app) unless block.nil?
             end
 
@@ -19,6 +17,20 @@ module BubbleWrap
         end
       end
 
+    end
+
+    module Config
+      def config_with_bubblewrap
+        config_without_bubblewrap.tap do |c|
+          ::BubbleWrap.after_config(c)
+        end
+      end
+
+      def self.extended(base)
+        singleton_class = class << base; self; end
+        singleton_class.send :alias_method, :config_without_bubblewrap, :config
+        singleton_class.send :alias_method, :config, :config_with_bubblewrap
+      end
     end
 
     module Platforms
@@ -32,3 +44,5 @@ end
 Motion::Project::App.extend(BubbleWrap::Ext::BuildTask)
 
 Motion::Project::App.extend(BubbleWrap::Ext::Platforms)
+
+Motion::Project::App.extend(BubbleWrap::Ext::Config)

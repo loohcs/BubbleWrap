@@ -48,6 +48,32 @@ describe BubbleWrap::Reactor::Eventable do
       events[:foo].member?(proof).should == false
     end
 
+    it 'unregisters all events' do
+      def bar; end
+      proof = method(:bar)
+      @subject.on(:foo, proof)
+      proof_2 = proc { }
+      @subject.on(:foo, &proof_2)
+      events = @subject.instance_variable_get(:@__events__)
+      @subject.off(:foo)
+      events[:foo].should == []
+    end
+
+    it 'unregisters method events after kvo' do
+      observing_object = Class.new do
+        include BubbleWrap::KVO
+      end.new
+
+      @subject.on(:foo, @subject.method(:description))
+      block = lambda { |old_value, new_value| }
+      observing_object.observe(@subject, :cool_variable, &block)
+      @subject.off(:foo, @subject.method(:description))
+
+      events = @subject.instance_variable_get(:@__events__)
+      events[:foo].length.should == 0
+      observing_object.unobserve_all
+    end
+
     it 'calls other event procs when a proc unregisters itself' do
       @proxy.proof = 0
       proof1 = proc do |r|

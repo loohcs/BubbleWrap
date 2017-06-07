@@ -60,6 +60,12 @@ describe BubbleWrap::App do
     end
   end
 
+  describe '.short_version' do
+    it 'returns the application short version' do
+      App.short_version.should == '3.2.1'
+    end
+  end
+
   describe '.run_after' do
     class DelayedRunAfterTest; attr_accessor :test_value end
 
@@ -70,6 +76,29 @@ describe BubbleWrap::App do
       wait_for_change(@test_obj, 'test_value') do
         @test_obj.test_value.should == true
       end
+    end
+
+  end
+
+  describe ".open_url" do
+
+    it "uses NSURL or converts NSString in NSURL and opens it" do
+      if Kernel.const_defined?(:UIApplication)
+        application = UIApplication.sharedApplication
+      else
+        application = NSWorkspace.sharedWorkspace
+      end
+      def application.url; @url end
+      def application.openURL(url); @url = url end
+
+      url = NSURL.URLWithString('http://localhost')
+      App.open_url(url)
+      application.url.should.equal url
+
+      url = 'http://localhost'
+      App.open_url(url)
+      application.url.class.should.equal NSURL
+      application.url.description.should.equal url
     end
 
   end

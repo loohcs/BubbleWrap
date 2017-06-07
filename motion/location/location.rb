@@ -28,6 +28,74 @@ module BubbleWrap
     module_function
     # Start getting locations
     # @param [Hash] options = {
+    #   authorization_type: :always/:when_in_use to trigger the type of authorization you want
+    #     default == uses :always
+    #   significant: true/false; whether to listen for significant location changes or
+    #     all location changes (see Apple docs for info); default == false
+    #   distance_filter:  minimum change in distance to be updated about, in meters;
+    #     default == uses KCLDistanceFilterNone,
+    #   desired_accuracy: minimum accuracy for updates to arrive;
+    #     any of :best_for_navigation, :best, :nearest_ten_meters,
+    #     :hundred_meters, :kilometer, or :three_kilometers; default == :best
+    #   purpose: string to display when the system asks user for location,
+    #   retries: if location cant be found. how many errors do we retry; default == 5
+    #   calibration: if the OS should display the heading calibration to the user; default == false
+    # }
+    # @block for callback. takes one argument, `result`.
+    #   - On error or cancelled, is called with a hash {error: BW::Location::Error::<Type>}
+    #   - On success, is called with a hash {to: #<CLLocation>, from: #<CLLocation>, previous: [#<CLLocation>,...]}
+    #   -- :previous will return an Array of CLLocation objects, ordered from oldest to newest, excluding the 
+    #        locations :to and :from, returning an empty Array if no additional locations were provided
+    #
+    # Example
+    # BW::Location.get(distance_filter: 10, desired_accuracy: :nearest_ten_meters) do |result|
+    #   result[:to].class == CLLocation
+    #   result[:from].class == CLLocation
+    #   result[:previous].class == NSArray<CLLocation>
+    #   p "Lat #{result[:to].latitude}, Long #{result[:to].longitude}"
+    # end
+    def get(options = {}, &block)
+      @callback = block
+      @callback.weak! if @callback && BubbleWrap.use_weak_callbacks?
+      @options = {
+        authorization_type: :always,
+        significant: false,
+        distance_filter: KCLDistanceFilterNone,
+        desired_accuracy: KCLLocationAccuracyBest,
+        retries: 5,
+        once: false,
+        calibration: false
+      }.merge(options)
+
+      @options[:significant] = false if @options[:significant].nil?
+      @retries = 0
+      @from_location = nil
+
+      if not enabled?
+        error(Error::DISABLED) and return
+      end
+
+      self.location_manager
+
+      if self.location_manager.respondsToSelector('requestAlwaysAuthorization')
+        @options[:authorization_type] == :always ? self.location_manager.requestAlwaysAuthorization : self.location_manager.requestWhenInUseAuthorization
+      end
+
+
+      self.location_manager.distanceFilter = @options[:distance_filter]
+      self.location_manager.desiredAccuracy = Constants.get("KCLLocationAccuracy", @options[:desired_accuracy])
+      self.location_manager.purpose = @options[:purpose] if @options[:purpose]
+
+      @initialized = true
+      start
+    end
+
+    def get_significant(options = {}, &block)
+      get(options.merge(significant: true), &block)
+    end
+
+    # Get the first returned location based on your options
+    # @param [Hash] options = {
     #   significant: true/false; whether to listen for significant location changes or
     #     all location changes (see Apple docs for info); default == false
     #   distance_filter:  minimum change in distance to be updated about, in meters;
@@ -40,49 +108,17 @@ module BubbleWrap
     # }
     # @block for callback. takes one argument, `result`.
     #   - On error or cancelled, is called with a hash {error: BW::Location::Error::<Type>}
-    #   - On success, is called with a hash {to: #<CLLocation>, from: #<CLLocation>}
+    #   - On success, it returns a CLLocation
+    #
     #
     # Example
-    # BW::Location.get(distance_filter: 10, desired_accuracy: :nearest_ten_meters) do |result|
-    #   result[:to].class == CLLocation
-    #   result[:from].class == CLLocation
-    #   p "Lat #{result[:to].latitude}, Long #{result[:to].longitude}"
+    # BW::Location.get_once(desired_accuracy: :three_kilometers, purpose: 'We need to use your GPS to show you how fun RM is') do |result|
+    #   if result.is_a?(CLLocation)
+    #     p "Lat #{result.latitude}, Long #{result.longitude}"
+    #   else
+    #     p "ERROR: #{result[:error]"
+    #   end
     # end
-    def get(options = {}, &block)
-      @callback = block
-      @callback.weak! if @callback && BubbleWrap.use_weak_callbacks?
-      @options = {
-        significant: false,
-        distance_filter: KCLDistanceFilterNone,
-        desired_accuracy: KCLLocationAccuracyBest,
-        retries: 5,
-        once: false
-      }.merge(options)
-
-      @options[:significant] = false if @options[:significant].nil?
-      @retries = 0
-
-      if not enabled?
-        error(Error::DISABLED) and return
-      end
-
-      self.location_manager.distanceFilter = @options[:distance_filter]
-      self.location_manager.desiredAccuracy = Constants.get("KCLLocationAccuracy", @options[:desired_accuracy])
-      self.location_manager.purpose = @options[:purpose] if @options[:purpose]
-
-      if @options[:significant]
-        self.location_manager.startMonitoringSignificantLocationChanges
-      elsif @options[:compass]
-        self.location_manager.startUpdatingHeading
-      else
-        self.location_manager.startUpdatingLocation
-      end
-    end
-
-    def get_significant(options = {}, &block)
-      get(options.merge(significant: true), &block)
-    end
-
     def get_once(options = {}, &block)
       get(options.merge(once: true), &block)
     end
@@ -93,6 +129,18 @@ module BubbleWrap
 
     def get_compass_once(options = {}, &block)
       get_compass(options.merge(once: true), &block)
+    end
+
+    # Start getting locations
+    def start
+      return unless initialized?
+      if @options[:significant]
+        self.location_manager.startMonitoringSignificantLocationChanges
+      elsif @options[:compass]
+        self.location_manager.startUpdatingHeading
+      else
+        self.location_manager.startUpdatingLocation
+      end
     end
 
     # Stop getting locations
@@ -113,14 +161,21 @@ module BubbleWrap
       @location_manager
     end
 
-    # returns true/false whether services are enabled for the _device_
+    # returns true/false whether services, or limited services, are enabled for the _device_
     def enabled?
       CLLocationManager.locationServicesEnabled
     end
 
+    # returns true/false if CLLocationManager has been initialized with the provided or default options
+    def initialized?
+      @initialized ||= false
+    end
+
     # returns true/false whether services are enabled for the _app_
     def authorized?
-      CLLocationManager.authorizationStatus == KCLAuthorizationStatusAuthorized
+      [
+        BW::Constants.get("KCLAuthorizationStatus", :authorized)
+      ].include?(CLLocationManager.authorizationStatus)
     end
 
     def error(type)
@@ -131,13 +186,19 @@ module BubbleWrap
 
     ##########
     # CLLocationManagerDelegate Methods
-    def locationManager(manager, didUpdateToLocation:newLocation, fromLocation:oldLocation)
+    def locationManager(manager, didUpdateLocations:locations)
       if @options[:once]
-        @callback && @callback.call(newLocation)
+        @callback && @callback.call(locations.last)
         @callback = proc { |result| }
         stop
       else
-        @callback && @callback.call({to: newLocation, from: oldLocation})
+        size = locations.count
+        result = {to: locations.last, 
+          from: ( (size > 1) ? locations.last(2).first : @from_location ), 
+          previous: ( (size > 2) ? locations.first(size - 2) : [] )
+        }
+        @from_location = result[:to]
+        @callback && @callback.call(result)
       end
     end
 
@@ -170,8 +231,8 @@ module BubbleWrap
           if @retries > @options[:retries]
             error(Error::LOCATION_UNKNOWN)
           else
-            self.location_manager.stopUpdatingLocation
-            self.location_manager.startUpdatingLocation
+            stop
+            start
           end
         when KCLErrorNetwork
           error(Error::NETWORK_FAILURE)
@@ -186,6 +247,10 @@ module BubbleWrap
       when KCLAuthorizationStatusDenied
         error(Error::PERMISSION_DENIED)
       end
+    end
+
+    def locationManagerShouldDisplayHeadingCalibration(manager)
+      @options[:calibration] ? @options[:calibration] : false
     end
   end
 end

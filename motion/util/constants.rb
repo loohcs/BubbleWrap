@@ -3,7 +3,7 @@ module BubbleWrap
   module Constants
     module_function
 
-    # Looks like RubyMotiononly  adds UIKit constants
+    # Looks like RubyMotion only adds UIKit constants
     # at compile time. If you don't use these
     # directly in your code, they don't get added
     # to Kernel and Constants.get crashes.
@@ -24,7 +24,12 @@ module BubbleWrap
     # get("UIImagePickerControllerSourceType", ["photo_library", "camera", "saved_photos_album"]) => 3
     # get("UIActivityType", [:air_drop, :print]) => ["com.apple.UIKit.activity.AirDrop", "com.apple.UIKit.activity.Print"]
     def get(base, *values)
-      value = values.size == 1 ? values.first : values.flatten
+      if values.is_a? NSArray
+        value = values.size == 1 ? values.first : values.flatten
+      else
+        value = values
+      end
+
       case value
       when Numeric
         value.to_i
